@@ -25,9 +25,9 @@ CSP_version="0.2.11"
 
 # Defining text styles for readablity
 bold=$(echo -e "\033[1m")
-reset=$(echo -e "\033[0m")
-error=$(echo -e "${bold}\033[31m")
 warning=$(echo -e "\033[33m")
+error=$(echo -e "${bold}\033[31m")
+reset=$(echo -e "\033[0m")
 
 # Provides a yes/no prompt.
 function ask {
@@ -242,9 +242,26 @@ fi
 STEAMAPPS="${AC_COMMON%"/common/assettocorsa"}"
 AC_COMPATDATA="$STEAMAPPS/compatdata/244210"
 
+# Checking for potential disk issues
+function check-disk {
+  local partition_info=($(df -Tk "$AC_COMPATDATA" | tail -n 1))
+  local dev_path="${partition_info[0]}"
+  local partition_name="$(basename "$dev_path")"
+  local filesystem_type=($(lsblk | grep "$partition_name"))
+  local filesystem_type="${filesystem_type[1]}"
+  if [[ "$filesystem_type" == "ntfs" ]]; then
+    echo "${warning}Assetto Corsa is installed on a NTFS partition. This will cause issues.${reset}"
+  fi
+  local available_space="${partition_info[4]}"
+  if (( available_space < 1000000 )); then
+    echo "${warning}The disk that Assetto Corsa is installed on has less than 1GB of free space.${reset}"
+  fi
+}
+check-disk
+
 # Checking if Assetto Corsa is running
 ac_pid="$(pgrep "AssettoCorsa.ex")"
-if [[ $ac_pid != "" ]]; then
+if [[ "$ac_pid" != "" ]]; then
   if ask "Assetto Corsa is running. Stop Assetto Corsa to proceed?"; then
     kill "$ac_pid"
   else
