@@ -469,27 +469,60 @@ function find-mod-zip {
   echo "$mod_zip"
 }
 
+# Finds an extracted mod directory in Downloads.
+function find-mod-dir {
+  local mod_name="$1"
+  local mod_dir=""
+  if [[ ! -d "$DOWNLOADS_DIR" ]]; then
+    echo ""
+    return
+  fi
+  if [[ -d "$DOWNLOADS_DIR/$mod_name" ]]; then
+    mod_dir="$DOWNLOADS_DIR/$mod_name"
+  else
+    mod_dir="$(find "$DOWNLOADS_DIR" -maxdepth 1 -type d -iname "$mod_name" | head -n 1)"
+    if [[ "$mod_dir" == "" ]]; then
+      mod_dir="$(find "$DOWNLOADS_DIR" -maxdepth 1 -type d -iname "${mod_name}*" | head -n 1)"
+    fi
+  fi
+  echo "$mod_dir"
+}
+
 # Installs a mod by extracting MOD_NAME.zip and copying MOD_NAME/ contents to AC root.
 function install-local-mod {
   local mod_name="$1"
+  local mod_dir="$(find-mod-dir "$mod_name")"
   local mod_zip="$(find-mod-zip "$mod_name")"
   local mod_temp_dir="temp/${mod_name,,}_install"
-  local mod_folder="$mod_temp_dir/$mod_name"
+  local mod_folder=""
+  if [[ "$mod_dir" != "" ]]; then
+    echo "Installing $mod_name from extracted folder '$mod_dir'..."
+    subprocess cp -r "$mod_dir/." "$AC_COMMON/"
+    return
+  fi
   if [[ "$mod_zip" == "" ]]; then
     echo "${error}Could not find a ${mod_name} zip file in '$DOWNLOADS_DIR'.${reset}"
-    echo "Expected a zip file in Downloads with '${mod_name}' in its name."
+    echo "Expected either '$DOWNLOADS_DIR/$mod_name/' or a zip file with '${mod_name}' in its name."
     exit 1
   fi
   echo "Installing $mod_name from '$mod_zip'..."
   subprocess rm -rf "$mod_temp_dir"
   subprocess mkdir -p "$mod_temp_dir"
   subprocess unzip -qo "$mod_zip" -d "$mod_temp_dir"
+  mod_folder="$mod_temp_dir/$mod_name"
   if [[ ! -d "$mod_folder" ]]; then
     mod_folder="$(find "$mod_temp_dir" -maxdepth 2 -type d -iname "$mod_name" | head -n 1)"
   fi
   if [[ "$mod_folder" == "" ]]; then
-    echo "${error}Could not find '$mod_name/' after extracting '$mod_zip'.${reset}"
-    echo "Make sure the zip extracts to a '$mod_name' directory."
+    # Some mod archives contain AC root directories directly at archive root.
+    if [[ -d "$mod_temp_dir/apps" ]] || [[ -d "$mod_temp_dir/content" ]] || [[ -d "$mod_temp_dir/extension" ]] || [[ -d "$mod_temp_dir/system" ]]; then
+      mod_folder="$mod_temp_dir"
+      subprocess rm -rf "$mod_temp_dir/__MACOSX"
+    fi
+  fi
+  if [[ "$mod_folder" == "" ]]; then
+    echo "${error}Could not determine files to install for '$mod_name' from '$mod_zip'.${reset}"
+    echo "Expected either a top-level '$mod_name/' folder or AC root folders (apps/content/extension/system)."
     subprocess rm -rf "$mod_temp_dir"
     exit 1
   fi
