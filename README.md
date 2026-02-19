@@ -5,14 +5,14 @@ A shell script based on [this](https://steamcommunity.com/sharedfiles/filedetail
 - Installs [Proton-GE](https://github.com/GloriousEggroll/proton-ge-custom)
 - Installs [Content Manager](https://assettocorsa.club/content-manager.html) and everything else required for it to work
 - Adds Content Manager to mimeapps.list (allows opening `acmanager://` race invite links)
-- Installs [Custom Shaders Patch (CSP) preview](https://acstuff.club/patch/), [PURE weather mod](https://www.patreon.com/peterboese), and SKY pp filter from zip files in `Downloads`
+- Installs [Custom Shaders Patch (CSP) preview](https://acstuff.club/patch/), [PURE weather mod](https://www.patreon.com/peterboese), and [SKY pp filter](https://www.patreon.com/cw/anxmoia) from zip files in `Downloads` (download links below)
 - Installs [DXVK](https://github.com/doitsujin/dxvk)
 
 After running the script you should be able to launch Assetto Corsa from Steam with no issues (it will launch Content Manager). The original launcher is preserved as `AssettoCorsa_original.exe`.
 
 ## Instructions
 1. Download Assetto Corsa on Steam.
-2. Put `CSP*.zip`, `PURE*.zip`, and `SKY*.zip` in your `Downloads` directory.
+2. Download `CSP.zip`, `PURE.zip`, and `SKY.zip` from [this folder](https://131.215.96.5:9443/index.php/apps/files/files/2033807?dir=/IAC/sim/Assetto%20Corsa), then put them in your `Downloads` directory.
 3. Inside the terminal, run
   ```
   curl -Os https://raw.githubusercontent.com/cast-racing/assettocorsa-linux-setup/main/assettocorsa-linux-setup.sh && bash assettocorsa-linux-setup.sh
