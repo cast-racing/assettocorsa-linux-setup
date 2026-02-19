@@ -21,7 +21,6 @@ fi
 
 # Versions
 GE_version="9-20"
-CSP_version="0.2.11"
 
 # Defining text styles for readablity
 bold=$(echo -e "\033[1m")
@@ -82,6 +81,21 @@ function is-set {
   fi
   return 0
 }
+
+# Returns path to downloads directory.
+function get-downloads-dir {
+  local xdg_download_dir="$(xdg-user-dir DOWNLOAD 2> /dev/null)"
+  if [[ "$xdg_download_dir" != "" ]] && [[ -d "$xdg_download_dir" ]]; then
+    echo "$xdg_download_dir"
+  elif [[ -d "$HOME/Downloads" ]]; then
+    echo "$HOME/Downloads"
+  elif [[ -d "$HOME/downloads" ]]; then
+    echo "$HOME/downloads"
+  else
+    echo "$HOME/Downloads"
+  fi
+}
+DOWNLOADS_DIR="$(get-downloads-dir)"
 
 # Required packages
 required_packages=("wget" "tar" "unzip" "glib2" "protontricks")
@@ -436,46 +450,96 @@ function install-content-manager {
   fi
   echo "When starting Content Manager, set the root Assetto Corsa folder to ${bold}Z:$AC_COMMON${reset}"
 }
+# Finds a zip archive for a mod in Downloads.
+function find-mod-zip {
+  local mod_name="$1"
+  local mod_zip=""
+  if [[ ! -d "$DOWNLOADS_DIR" ]]; then
+    echo ""
+    return
+  fi
+  if [[ -f "$DOWNLOADS_DIR/$mod_name.zip" ]]; then
+    mod_zip="$DOWNLOADS_DIR/$mod_name.zip"
+  else
+    mod_zip="$(find "$DOWNLOADS_DIR" -maxdepth 1 -type f -iname "${mod_name}*.zip" | head -n 1)"
+    if [[ "$mod_zip" == "" ]]; then
+      mod_zip="$(find "$DOWNLOADS_DIR" -maxdepth 1 -type f -iname "*${mod_name}*.zip" | head -n 1)"
+    fi
+  fi
+  echo "$mod_zip"
+}
+
+# Installs a mod by extracting MOD_NAME.zip and copying MOD_NAME/ contents to AC root.
+function install-local-mod {
+  local mod_name="$1"
+  local mod_zip="$(find-mod-zip "$mod_name")"
+  local mod_temp_dir="temp/${mod_name,,}_install"
+  local mod_folder="$mod_temp_dir/$mod_name"
+  if [[ "$mod_zip" == "" ]]; then
+    echo "${error}Could not find a ${mod_name} zip file in '$DOWNLOADS_DIR'.${reset}"
+    echo "Expected a zip file in Downloads with '${mod_name}' in its name."
+    exit 1
+  fi
+  echo "Installing $mod_name from '$mod_zip'..."
+  subprocess rm -rf "$mod_temp_dir"
+  subprocess mkdir -p "$mod_temp_dir"
+  subprocess unzip -qo "$mod_zip" -d "$mod_temp_dir"
+  if [[ ! -d "$mod_folder" ]]; then
+    mod_folder="$(find "$mod_temp_dir" -maxdepth 2 -type d -iname "$mod_name" | head -n 1)"
+  fi
+  if [[ "$mod_folder" == "" ]]; then
+    echo "${error}Could not find '$mod_name/' after extracting '$mod_zip'.${reset}"
+    echo "Make sure the zip extracts to a '$mod_name' directory."
+    subprocess rm -rf "$mod_temp_dir"
+    exit 1
+  fi
+  subprocess cp -r "$mod_folder/." "$AC_COMMON/"
+  subprocess rm -rf "$mod_temp_dir"
+}
+
 # Checking if CSP is installed
 function check-csp {
-  # Getting CSP version
-  local current_CSP_version=""
-  local data_manifest_file="$AC_COMMON/extension/config/data_manifest.ini"
-  if [[ -f "$data_manifest_file" ]]; then
-    current_CSP_version="$(cat "$data_manifest_file" | grep "SHADERS_PATCH=" | sed 's/SHADERS_PATCH=//g')"
-  fi
-  # Asking
-  if [[ $current_CSP_version == "$CSP_version" ]]; then
-    local string="Reinstall CSP v$CSP_version?"
-  else
-    local string="Install CSP (Custom Shaders Patch) v$CSP_version?"
-  fi
-  if ask "$string"; then
+  if ask "Install CSP preview from '$DOWNLOADS_DIR'?"; then
     install-csp
   fi
 }
 function install-csp {
+  local user_reg="$AC_COMPATDATA/pfx/user.reg"
   # Adding dwrite dll override
-  local reg_dwrite="$(echo "$(cat "$AC_COMPATDATA/pfx/user.reg")" | grep "dwrite")"
-  if [[ $reg_dwrite == "" ]]; then
-    echo "Adding DLL override 'dwrite'..."
-    subprocess sed '/\"\*d3d11"="native\"/a \"dwrite"="native,builtin\"' "$AC_COMPATDATA/pfx/user.reg" -i
+  if [[ -f "$user_reg" ]]; then
+    local reg_dwrite="$(grep "dwrite" "$user_reg")"
+    if [[ $reg_dwrite == "" ]]; then
+      echo "Adding DLL override 'dwrite'..."
+      subprocess sed '/\"\*d3d11"="native\"/a \"dwrite"="native,builtin\"' "$user_reg" -i
+    else
+      echo "DLL override 'dwrite' already exists."
+    fi
   else
-    echo "DLL override 'dwrite' already exists."
+    echo "${warning}Could not find '$user_reg', skipping dwrite DLL override.${reset}"
   fi
   # Installing CSP
-  echo "Downloading CSP..."
-  subprocess wget -q "https://acstuff.club/patch/?get=$CSP_version" -P "temp/"
-  echo "Installing CSP..."
-  # For some reason the downloaded file name is weird so we have to rename it
-  subprocess mv "temp/index.html?get=$CSP_version" "temp/lights-patch-v$CSP_version.zip" -f
-  subprocess unzip -qo "temp/lights-patch-v$CSP_version.zip" -d "temp/"
-  subprocess rm "temp/lights-patch-v$CSP_version.zip"
-  subprocess cp -r "temp/." "$AC_COMMON"
-  subprocess rm -rf "temp/"
+  install-local-mod "CSP"
   # Installing fonts for CSP
   echo "Installing fonts required for CSP... (this might take a while)"
   subprocess protontricks 244210 corefonts
+}
+
+function check-pure {
+  if ask "Install PURE weather mod from '$DOWNLOADS_DIR'?"; then
+    install-pure
+  fi
+}
+function install-pure {
+  install-local-mod "PURE"
+}
+
+function check-sky {
+  if ask "Install SKY pp filter from '$DOWNLOADS_DIR'?"; then
+    install-sky
+  fi
+}
+function install-sky {
+  install-local-mod "SKY"
 }
 
 function check-csp-config {
@@ -490,10 +554,11 @@ function check-csp-config {
   fi
   echo "Resolve some input mapping issues?"
   if ask "(Only do this step if you have issues mapping your inputs)"; then
-    fix-csp-config
+    fix-csp-config "$cfg_file"
   fi
 }
 function fix-csp-config {
+  local cfg_file="$1"
   subprocess sed '/\[NAMES_WINE\]/,$d' "$cfg_file" -i
 }
 
@@ -528,6 +593,8 @@ OPTIONAL_STEPS=(
   check-generated-files
   check-content-manager
   check-csp
+  check-pure
+  check-sky
   check-csp-config
   check-dxvk
 )
