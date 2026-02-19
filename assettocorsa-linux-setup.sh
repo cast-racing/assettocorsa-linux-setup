@@ -426,11 +426,20 @@ function install-content-manager {
   subprocess rm "temp/fonts.zip"
   subprocess cp -r "temp/system" "$AC_COMMON/content/fonts/"
   subprocess rm -rf "temp/"
-  # Creating symlink
-  echo "Creating symlink..."
-  local link_from="$STEAM_DIR/config/loginusers.vdf"
-  local link_to="$AC_COMPATDATA/pfx/drive_c/Program Files (x86)/Steam/config/loginusers.vdf"
-  subprocess ln -sf "$link_from" "$link_to"
+  # Copying loginusers.vdf into the Wineprefix (symlinks can break in some setups)
+  echo "Copying Steam loginusers.vdf..."
+  local loginusers_source="$STEAM_DIR/config/loginusers.vdf"
+  local loginusers_target_dir="$AC_COMPATDATA/pfx/drive_c/Program Files (x86)/Steam/config"
+  local loginusers_target="$loginusers_target_dir/loginusers.vdf"
+  if [[ -f "$loginusers_source" ]]; then
+    subprocess mkdir -p "$loginusers_target_dir"
+    if [[ -L "$loginusers_target" ]]; then
+      subprocess rm "$loginusers_target"
+    fi
+    subprocess cp -f "$loginusers_source" "$loginusers_target"
+  else
+    echo "${warning}Could not find '$loginusers_source', skipping loginusers.vdf copy.${reset}"
+  fi
   # Adding ability to open acmanager uri links
   if [[ -f "$AC_DESKTOP" ]]; then
     mimelist="$HOME/.config/mimeapps.list"
