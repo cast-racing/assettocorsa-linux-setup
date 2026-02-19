@@ -595,16 +595,6 @@ function fix-csp-config {
   subprocess sed '/\[NAMES_WINE\]/,$d' "$cfg_file" -i
 }
 
-function check-dxvk {
-  if ask "Install DXVK? (can improve performance in some cases)"; then
-    install-dxvk
-  fi
-}
-function install-dxvk {
-  echo "Installing DXVK..."
-  subprocess protontricks --no-background-wineserver 244210 dxvk
-}
-
 function check-generated-files {
   if [ ! -d "$AC_COMPATDATA/pfx/drive_c/Program Files (x86)/Steam/config" ]; then
     echo "\
@@ -629,7 +619,6 @@ OPTIONAL_STEPS=(
   check-pure
   check-sky
   check-csp-config
-  check-dxvk
 )
 echo
 for func in "${OPTIONAL_STEPS[@]}"; do
