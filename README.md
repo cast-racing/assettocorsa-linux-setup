@@ -11,7 +11,7 @@ After running the script you should be able to launch Assetto Corsa from Steam w
 
 ## Instructions
 1. Download Assetto Corsa on Steam.
-2. Download `CSP.zip`, `PURE.zip`, and `SKY.zip` from [this folder](https://131.215.96.5:9443/index.php/apps/files/files/2033807?dir=/IAC/sim/Assetto%20Corsa), then put them in your `Downloads` directory.
+2. Download `CSP.zip`, `PURE.zip`, and `SKY.zip` from [this folder](https://131.215.96.5:9443/index.php/s/99YrMW9x3MJARZq), then put them in your `Downloads` directory.
 3. Inside the terminal, run
   ```
   curl -Os https://raw.githubusercontent.com/cast-racing/assettocorsa-linux-setup/main/assettocorsa-linux-setup.sh && bash assettocorsa-linux-setup.sh
